@@ -106,10 +106,7 @@
             if (this.value === this.constructor.MINE) {
                 console.error("BOOM!");
                 revealMap();
-                // Setting timeout so the View has a chance to update
-                setTimeout(function () {
-                    alert("Game Over :(");
-                }, 100);
+                notificationPopup();
 
             } else if (this.value === this.constructor.EMPTY) {
                 // Check around the cell
@@ -125,6 +122,13 @@
                 }
             }
         };
+    }
+
+    function notificationPopup (msg) {
+        // Setting timeout so the View has a chance to update
+        setTimeout(function () {
+            alert(msg);
+        }, 100);
     }
 
     function getNodeAt (c) {
@@ -172,6 +176,21 @@
         })
     }
 
+    function checkVictoryCondition () {
+        "use strict";
+        var victoryCheck = true;
+        grid.forEach(function (v) {
+            v.forEach(function (curr) {
+                // If there are still un-revealed non mine nodes then 
+                if (!curr.clicked && curr.isNotAMine()) {
+                    victoryCheck = false;
+                }
+            })
+        });
+
+        victoryCheck && notificationPopup("OMG You WON!");
+    }
+
     function printGrid () {
         "use strict";
         console.log(grid.map(function (v) {
@@ -186,6 +205,7 @@
 
         cellObj.activate();
         updateGrid();
+        checkVictoryCondition();
 
     }
 
