@@ -1,0 +1,277 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Sweep Mines Project</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <style>
+    #map table {
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .less-padding {
+        padding: 6px 9px;
+    }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Sweeper of mines!</h2>
+        <!-- <input id="rows" class="form-control" placeholder="number of rows" type="number" value="10">
+        <input id="cols" class="form-control" placeholder="number of columns" type="number" value="10">
+        <input id="mines" placeholder="number of mines" type="range">
+        <button onclick="createMineMap()">Create</button> -->
+    </div>
+
+    <div class="container">
+        <div class="form-inline">
+          <div class="form-group">
+            <label for="rows">Rows</label>
+            <input type="number" class="form-control" id="rows" value="10">
+          </div>
+          <div class="form-group">
+            <label for="cols">Cols</label>
+            <input type="number" class="form-control" id="cols" value="10">
+          </div>
+          <div class="form-group">
+            <label for="mines">Mines</label>
+            <input type="range" class="form-control" id="mines">
+          </div>
+
+          <div class="form-group">
+              <button type="button" class="btn btn-default" onclick="createMineMap()">Start!</button>
+            </div>
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="container" style="text-align: center;">
+        <strong><button class="btn btn-default btn-lg" style="font-size: 30px;" onclick="createMineMap()">☺</button></strong>
+        <hr>
+        <div id="map"></div>
+    </div>
+</body>
+<script>
+
+    var grid, mines;
+    var MINE = 9, 
+        EMPTY = 0, 
+        EMPTY_VIEW = "&nbsp&nbsp", 
+        CLICKED_CLASS = "btn-success", 
+        MINE_CLASS = "btn-danger", 
+        MINE_SUPPLEMENTAL_CLASS = "less-padding";
+
+    var recursionLimit = 1000;
+
+    Node.MINE = 9;
+    Node.EMPTY = 0;
+    function Node (options) {
+        this.clicked = false;
+        this.x = options ? options.x : void 0;
+        this.y = options ? options.y : void 0;
+        this.value = this.constructor.EMPTY;
+        this.constructor.prototype.incrementCount = function () {
+            this.isNotAMine() && this.value++;
+        };
+        this.constructor.prototype.isAMine = function () {
+            return this.value === this.constructor.MINE;
+        };
+        this.constructor.prototype.isNotAMine = function () {
+            return this.value !== this.constructor.MINE;
+        };
+        this.constructor.prototype.getViewValue = function () {
+            switch (this.value) {
+                case (Node.EMPTY):
+                    return EMPTY_VIEW;
+                case (Node.MINE):
+                    return "&#x1F4A3;";
+                default:
+                    return this.value;
+            }
+        };
+        this.constructor.prototype.activate = function () {
+            // Check recursion limit before proceeding further
+            if (!recursionLimit--) {
+                throw new Error("RECURSION LIMIT!");
+            }
+
+            // If the cell was already clicked, don't do anything
+            if (this.clicked) {
+                return;
+            } else {
+                this.clicked = true;
+            }
+
+            if (this.value === this.constructor.MINE) {
+                console.error("BOOM!");
+                revealMap();
+                // Setting timeout so the View has a chance to update
+                setTimeout(function () {
+                    alert("Game Over :(");
+                }, 100);
+
+            } else if (this.value === this.constructor.EMPTY) {
+                // Check around the cell
+                // If the cell is not triggered then call handleCellClick on it
+                for (var i = -1; i < 2; i++) {
+                    for (var j = -1; j < 2; j++) {
+                        var newX = (this.x + i), newY = (this.y + j);
+                        if (getNodeAt({ x: newX, y: newY }) && !getNodeAt({ x: newX, y: newY }).clicked) {
+                            getNodeAt({ x: newX, y: newY }).activate();
+                            recursionLimit++;
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    function getNodeAt (c) {
+        return grid[c.y] ? grid[c.y][c.x] : void 0;
+    }
+
+    function updateGrid () {
+        "use strict";
+        grid.forEach(function (v) {
+            v.forEach(function (curr) {
+                // only need to update if it was activated
+                if (curr.clicked) {
+                    var cell = document.getElementById(curr.x + "-" + curr.y);
+                    if (!cell.classList.contains(CLICKED_CLASS)) {
+                        cell.classList.add(CLICKED_CLASS);
+                        cell.innerHTML = curr.getViewValue();
+                    }
+                }
+            })
+        })
+    }
+
+    function revealMap () {
+        "use strict";
+        grid.forEach(function (v) {
+            v.forEach(function (curr) {
+                // Reveal unactivated ones
+                if (!curr.clicked) {
+                    var cell = document.getElementById(curr.x + "-" + curr.y);
+                    cell.classList.add(CLICKED_CLASS);
+                    cell.innerHTML = curr.getViewValue();
+                // Reveal clicked mine
+                } else if (curr.clicked && curr.isAMine()) {
+                    var cell = document.getElementById(curr.x + "-" + curr.y);
+                    cell.classList.add(MINE_CLASS);
+                    cell.innerHTML = curr.getViewValue();
+                }
+                // Supplemental class for revealed bomb cells
+                // since I am using unicode for bomb emoji
+                if (curr.isAMine()) {
+                    var cell = document.getElementById(curr.x + "-" + curr.y);
+                    cell.classList.add(MINE_SUPPLEMENTAL_CLASS);
+                }
+            })
+        })
+    }
+
+    function printGrid () {
+        "use strict";
+        console.log(grid.map(function (v) {
+            return ["| ", v.map(function(v){ return v.value; }).join(" | "), " |"].join("");
+        }).join("\n"));
+    }
+    
+    function handleCellClick (element) {
+        // console.log("handleCellClick", element);
+        var coords = element.id.split("-"), 
+            cellObj = getNodeAt({ x: coords[0], y: coords[1] });
+
+        cellObj.activate();
+        updateGrid();
+
+    }
+
+    function createMineMap() {
+        // Remove old table
+        var oldMap = document.querySelector("#map table");
+        oldMap && document.querySelector("#map").removeChild(oldMap);
+        // Get init value from form
+        var rows = parseInt(document.querySelector("#rows").value, 10);
+        var cols = parseInt(document.querySelector("#cols").value, 10);
+        var numberOfMines = Math.floor(parseInt(document.querySelector("#mines").value, 10) / 6);
+
+        console.log("Rows", rows, "Cols", cols, "Mines", numberOfMines);
+
+        mines = [];
+        grid = [];
+
+        var table = document.createElement("table");
+        var tableBody = document.createElement("tbody");
+        table.appendChild(tableBody);
+
+        for (var j = 0; j < rows; j++) {
+            var row = document.createElement("tr");
+            var rowArray = [];
+
+            for (var i = 0; i < cols; i++) {
+                var cell = document.createElement("td");
+                cell.onclick = function () {
+                    handleCellClick(this);
+                }
+                cell.id = i + "-" + j;
+                cell.classList.add("btn");
+                cell.classList.add("btn-default");
+                cell.innerHTML = EMPTY_VIEW;
+
+                row.appendChild(cell);
+                // console.log("new cell", cell);
+                rowArray.push(new Node({ x : i, y: j }))
+            }
+            tableBody.appendChild(row);
+            grid.push(rowArray);
+        }
+
+        document.querySelector("#map").appendChild(table);
+
+        placeMines(numberOfMines);
+        markProximities();
+
+    }
+
+    function placeMines (numberOfMines) {
+        if (!numberOfMines) numberOfMines = 15;
+
+        while (numberOfMines) {
+            var y = Math.floor(Math.random() * grid.length);
+            var x = Math.floor(Math.random() * grid[0].length);
+
+            // @TODO
+            // look for it in the array
+            // if it is not there, add it
+
+            getNodeAt({ x: x, y: y}).value = Node.MINE;
+            mines.push([x,y]);
+
+            numberOfMines--;
+        }
+
+    }
+
+    function markProximities () {
+        mines.forEach(function (cell){
+            var x = cell[0], y = cell[1];
+
+            for (var i = -1; i < 2; i++) {
+                for (var j = -1; j < 2; j++) {
+                    var newX = (x + i), newY = (y + j);
+                    if (getNodeAt({ x: newX, y: newY })) {
+                        getNodeAt({ x: newX, y: newY }).incrementCount();
+                    }
+                }
+            }
+
+        });
+
+        printGrid();
+
+    }
+</script>
+</html>
